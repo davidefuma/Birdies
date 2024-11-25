@@ -1,5 +1,5 @@
 import math
-
+import numpy as np
 import pygame
 import random
 
@@ -23,7 +23,7 @@ panel_rect = pygame.Rect(panel_x, 0, panel_width, panel_height)
 
 # Parameters (initial values)
 inertia = 0.95
-speed_reduction_factor = 1
+speed_reduction_factor = 0.99
 collision_zone_radius = 15
 interaction_zone_radius = 30
 shift_to_buddy = 0.7  # Adjust this value to control the shift strength
@@ -63,6 +63,8 @@ class Game:
             self.birds.append(Bird(dx, dy))  # No longer passing x, y to Bird
             self.X.append(x)  # Store x-coordinate in the vector
             self.Y.append(y)  # Store y-coordinate in the vector
+        self.X = np.array(self.X)
+        self.Y = np.array(self.Y)
 
     def run(self):
         running = True
@@ -231,11 +233,17 @@ class Bird:
         self.dx += random.uniform(-0.1, 0.1)
         self.dy += random.uniform(-0.1, 0.1)
 
+        #calculate distances between all the couples of birds
+        disx = game.X[:, np.newaxis] - game.X  # Calculate x-differences for all pairs
+        disy = game.Y[:, np.newaxis] - game.Y  # Calculate y-differences for all pairs
+        distances = np.hypot(disx, disy)  # Calculate distances for all pairs
+
         # Collision detection with other birds and avoidance
         j = 0
         for other_bird in game.birds:
             if other_bird != self:
-                distance = math.hypot(game.X[bird_index] - game.X[j], game.Y[bird_index] - game.Y[j])
+                distance = distances[bird_index, j]
+                #distance = math.hypot(game.X[bird_index] - game.X[j], game.Y[bird_index] - game.Y[j])
                 if self.is_colliding(bird_index, j, distance):  # collision zone
                     self.avoid_collision(bird_index, j)
                 elif self.is_in_interaction_zone(bird_index, j, distance):  # Interaction zone
