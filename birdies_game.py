@@ -22,7 +22,7 @@ panel_x = screen_width - panel_width
 panel_rect = pygame.Rect(panel_x, 0, panel_width, panel_height)
 
 # Parameters (initial values)
-inertia = 0.95
+inertia = 0.75
 speed_reduction_factor = 0.99
 collision_zone_radius = 15
 interaction_zone_radius = 30
@@ -43,7 +43,7 @@ sliders = [
 
 
 class Game:
-    def __init__(self, num_birds=40):
+    def __init__(self, num_birds=17):
         self.num_birds = num_birds
         self.screen_width = screen_width
         self.screen_height = screen_height
@@ -56,7 +56,7 @@ class Game:
 
     def create_birds(self):
         for _ in range(self.num_birds):
-            x = random.randint(0, self.screen_width)
+            x = random.randint(0, self.screen_width -  panel_width)
             y = random.randint(0, self.screen_height)
             dx = random.uniform(-1, 1)
             dy = random.uniform(-1, 1)
@@ -273,9 +273,10 @@ class Bird:
         #update the directions
         self.last_dx = self.dx
         self.last_dy = self.dy
-        # Update position using X and Y vectors
-        game.X[bird_index] += self.dx
-        game.Y[bird_index] += self.dy
+        # Update position using X and Y vectors. X and Y are vectors of integers. dx and dy are float, so we must
+        # round them
+        game.X[bird_index] += np.round(self.dx)
+        game.Y[bird_index] += np.round(self.dy)
 
 
 if __name__ == "__main__":
