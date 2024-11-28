@@ -25,16 +25,15 @@ checkbox = Checkbox(panel_x + 20, 300, 20, variables.show_zones, "Show Zones")
 
 # Create sliders
 sliders = [
-    Slider(panel_x + 20, 50, variables.panel_width - 40, 20, 0.1, 1.0, variables.inertia, "Inertia"),
-    Slider(panel_x + 20, 100, variables.panel_width - 40, 20, 0.01, 1.0, variables.speed_reduction_factor, "Speed Reduction"),
-    Slider(panel_x + 20, 150, variables.panel_width - 40, 20, 1, 100, variables.collision_zone_radius, "Collision Radius"),
-    Slider(panel_x + 20, 200, variables.panel_width - 40, 20, 1, 100, variables.interaction_zone_radius, "Interaction Radius"),
-    Slider(panel_x + 20, 250, variables.panel_width - 40, 20, 0.0, 2.0, variables.shift_to_buddy, "Shift to Buddy"),
+    Slider(panel_x + 20, 50, variables.panel_width - 40, 20, 0.0, 1.0, variables.inertia, "Inertia"),
+    Slider(panel_x + 20, 100, variables.panel_width - 40, 20, 1, 100, variables.collision_zone_radius, "Collision Radius"),
+    Slider(panel_x + 20, 150, variables.panel_width - 40, 20, 1, 100, variables.interaction_zone_radius, "Interaction Radius"),
+    Slider(panel_x + 20, 200, variables.panel_width - 40, 20, 0.0, 2.0, variables.shift_to_buddy, "Shift to Buddy"),
 ]
 
 
 class Game:
-    def __init__(self, num_birds=27):
+    def __init__(self, num_birds=10):
         self.num_birds = num_birds
         self.screen_width = variables.screen_width
         self.screen_height = variables.screen_height
@@ -89,10 +88,10 @@ class Game:
             # Update global parameters from sliders
            # global variables.inertia, speed_reduction_factor, collision_zone_radius, interaction_zone_radius, shift_to_buddy, show_zones
             variables.inertia = sliders[0].val
-            variables.speed_reduction_factor = sliders[1].val
-            variables.collision_zone_radius = sliders[2].val
-            variables.interaction_zone_radius = sliders[3].val
-            variables.shift_to_buddy = sliders[4].val  # Update shift_to_buddy
+
+            variables.collision_zone_radius = sliders[1].val
+            variables.interaction_zone_radius = sliders[2].val
+            variables.shift_to_buddy = sliders[3].val  # Update shift_to_buddy
             variables.show_zones = checkbox.state
 
             pygame.display.flip()
@@ -100,8 +99,17 @@ class Game:
         pygame.quit()
 
     def update(self):
+
+        # calculate distances between all the couples of birds
+        disx = variables.X[:, np.newaxis] - variables.X  # Calculate x-differences for all pairs
+        disy = variables.Y[:, np.newaxis] - variables.Y  # Calculate y-differences for all pairs
+        distances = np.hypot(disx, disy)  # Calculate distances for all pairs
+
+        this_step_interactions = {}
+
         for bird_index, bird in enumerate(self.birds):  # Iterate using index
-            bird.update(bird_index, self.birds)  # Pass the bird's index
+            this_step_interactions[bird_index] = {}
+            bird.update(bird_index, self.birds, distances, this_step_interactions)  # Pass the bird's index
 
     def draw(self):
         variables.screen.fill((0, 0, 0))

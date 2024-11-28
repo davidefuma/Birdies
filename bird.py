@@ -108,6 +108,7 @@ class Bird:
         self.dx = speed_adjustment * math.cos(angle_of_other_movement)  # Adjust speed to match
         self.dy = speed_adjustment * math.sin(angle_of_other_movement)
 
+
         # Shift towards the other bird
         dx_to_other = variables.X[other_bird_index] - variables.X[bird_index]
         dy_to_other = variables.Y[other_bird_index] - variables.Y[bird_index]
@@ -116,14 +117,12 @@ class Bird:
             self.dx += variables.shift_to_buddy * dx_to_other / distance
             self.dy += variables.shift_to_buddy * dy_to_other / distance
 
-    def update(self, bird_index, all_birds):
+    def update(self, bird_index, all_birds, distances, this_step_interactions):
         # Adjust speed with fixed values
         speed_adjustment = random.gauss(0, 0.35)  # 0.35 ìs standard deviation
         self.dx += speed_adjustment
         self.dy += speed_adjustment
-        # Further random adjustment
-        self.dx += random.uniform(-0.1, 0.1)
-        self.dy += random.uniform(-0.1, 0.1)
+
 
         #calculate distances between all the couples of birds
         disx = variables.X[:, np.newaxis] - variables.X  # Calculate x-differences for all pairs
@@ -132,14 +131,22 @@ class Bird:
 
         # Collision detection with other birds and avoidance
         j = 0
+
         for other_bird in all_birds:
             if other_bird != self:
                 distance = distances[bird_index, j]
-                #distance = math.hypot(variables.X[bird_index] - variables.X[j], variables.Y[bird_index] - variables.Y[j])
                 if self.is_colliding(bird_index, j, distance):  # collision zone
                     self.avoid_collision(bird_index, j)
-                elif self.is_in_interaction_zone(bird_index, j, distance):  # Interaction zone
-                    self.align_direction(bird_index, j, other_bird, distance)
+
+                #if the bird_index has already had an interaction with bird j this step, avoid the reciprocal interaction
+                else:
+                    if j not in this_step_interactions or bird_index not in this_step_interactions[j]:
+                        if self.is_in_interaction_zone(bird_index, j, distance):  # Interaction zone
+                            self.align_direction(bird_index, j, other_bird, distance)
+                            this_step_interactions[bird_index][j] = True
+                    else:
+                        #print('bird already had reciprocal interaction')
+                        pass
             j += 1
 
         # Inertia
@@ -157,10 +164,6 @@ class Bird:
             self.dy += 0.2  # Steer away from top border
         if variables.Y[bird_index] > variables.screen_height - border:
             self.dy -= 0.2  # Steer away from bottom border
-
-        # Reduce speed by a const factor to optimize the view
-        self.dx *= variables.speed_reduction_factor
-        self.dy *= variables.speed_reduction_factor
 
         #update the directions
         self.last_dx = self.dx

@@ -1,8 +1,8 @@
 # Parameters (initial values)
 import pygame
 
-inertia = 0.75
-speed_reduction_factor = 0.99
+inertia = 0.9
+
 collision_zone_radius = 15
 interaction_zone_radius = 30
 shift_to_buddy = 0.7  # Adjust this value to control the shift strength
