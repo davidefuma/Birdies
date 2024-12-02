@@ -108,7 +108,6 @@ class Bird:
         self.dx = speed_adjustment * math.cos(angle_of_other_movement)  # Adjust speed to match
         self.dy = speed_adjustment * math.sin(angle_of_other_movement)
 
-
         # Shift towards the other bird
         dx_to_other = variables.X[other_bird_index] - variables.X[bird_index]
         dy_to_other = variables.Y[other_bird_index] - variables.Y[bird_index]
@@ -123,8 +122,7 @@ class Bird:
         self.dx += speed_adjustment
         self.dy += speed_adjustment
 
-
-        #calculate distances between all the couples of birds
+        # calculate distances between all the couples of birds
         disx = variables.X[:, np.newaxis] - variables.X  # Calculate x-differences for all pairs
         disy = variables.Y[:, np.newaxis] - variables.Y  # Calculate y-differences for all pairs
         distances = np.hypot(disx, disy)  # Calculate distances for all pairs
@@ -138,14 +136,14 @@ class Bird:
                 if self.is_colliding(bird_index, j, distance):  # collision zone
                     self.avoid_collision(bird_index, j)
 
-                #if the bird_index has already had an interaction with bird j this step, avoid the reciprocal interaction
+                # if the bird_index has already had an interaction with bird j this step, avoid the reciprocal interaction
                 else:
                     if j not in this_step_interactions or bird_index not in this_step_interactions[j]:
                         if self.is_in_interaction_zone(bird_index, j, distance):  # Interaction zone
                             self.align_direction(bird_index, j, other_bird, distance)
                             this_step_interactions[bird_index][j] = True
                     else:
-                        #print('bird already had reciprocal interaction')
+                        # print('bird already had reciprocal interaction')
                         pass
             j += 1
 
@@ -153,19 +151,79 @@ class Bird:
         self.dx = variables.inertia * self.last_dx + (1 - variables.inertia) * self.dx
         self.dy = variables.inertia * self.last_dy + (1 - variables.inertia) * self.dy
 
-        # Border collision avoidance (like with other birds)
-        border = variables.collision_zone_radius  # Border width
-        # consider also panel width. this works only if panel is on the right of the board
-        if variables.X[bird_index] < border:
-            self.dx += 0.2  # Steer away from left border
-        if variables.X[bird_index] > variables.screen_width - border - variables.panel_width:
-            self.dx -= 0.2  # Steer away from right border
-        if variables.Y[bird_index] < border:
-            self.dy += 0.2  # Steer away from top border
-        if variables.Y[bird_index] > variables.screen_height - border:
-            self.dy -= 0.2  # Steer away from bottom border
+        # Border collision avoidance with improved logic
+        avoidance_radius = variables.collision_zone_radius * 2  # Same detection radius as restricted areas
+        speed = np.hypot(self.dx, self.dy)
+        speed_multiplier = max(1.0, speed)
+        
+        # Left border
+        distance_to_left = variables.X[bird_index] - variables.BORDER_THICKNESS
+        if distance_to_left < avoidance_radius:
+            base_force = 1.0 if distance_to_left <= 0 else (1 - distance_to_left/avoidance_radius) * 0.5
+            force = base_force * speed_multiplier
+            self.dx += force  # Push right
+            
+        # Right border (accounting for panel)
+        distance_to_right = (variables.screen_width - variables.panel_width - variables.BORDER_THICKNESS) - variables.X[bird_index]
+        if distance_to_right < avoidance_radius:
+            base_force = 1.0 if distance_to_right <= 0 else (1 - distance_to_right/avoidance_radius) * 0.5
+            force = base_force * speed_multiplier
+            self.dx -= force  # Push left
+            
+        # Top border
+        distance_to_top = variables.Y[bird_index] - variables.BORDER_THICKNESS
+        if distance_to_top < avoidance_radius:
+            base_force = 1.0 if distance_to_top <= 0 else (1 - distance_to_top/avoidance_radius) * 0.5
+            force = base_force * speed_multiplier
+            self.dy += force  # Push down
+            
+        # Bottom border
+        distance_to_bottom = variables.screen_height - variables.BORDER_THICKNESS - variables.Y[bird_index]
+        if distance_to_bottom < avoidance_radius:
+            base_force = 1.0 if distance_to_bottom <= 0 else (1 - distance_to_bottom/avoidance_radius) * 0.5
+            force = base_force * speed_multiplier
+            self.dy -= force  # Push up
 
-        #update the directions
+        # Avoid restricted areas based on collision zone radius
+        for rect in variables.restricted_areas:
+            rect_x, rect_y, rect_width, rect_height = rect
+
+            # Calculate if bird is inside the restricted area
+            is_inside = (rect_x < variables.X[bird_index] < rect_x + rect_width and
+                         rect_y < variables.Y[bird_index] < rect_y + rect_height)
+
+            # Calculate the closest point on the rectangle to the bird
+            closest_x = max(rect_x, min(variables.X[bird_index], rect_x + rect_width))
+            closest_y = max(rect_y, min(variables.Y[bird_index], rect_y + rect_height))
+
+            # Calculate the distance and direction from the bird to the closest point
+            dx_to_rect = closest_x - variables.X[bird_index]
+            dy_to_rect = closest_y - variables.Y[bird_index]
+            distance_to_rect = np.hypot(dx_to_rect, dy_to_rect)
+
+            # Calculate avoidance force based on distance
+            avoidance_radius = variables.collision_zone_radius * 2  # Increase detection radius
+            if distance_to_rect < avoidance_radius or is_inside:
+                # Calculate base force (stronger when closer)
+                base_force = 1.0 if is_inside else (1 - distance_to_rect / avoidance_radius) * 0.5
+
+                # Calculate speed-based multiplier (faster birds need stronger avoidance)
+                speed = np.hypot(self.dx, self.dy)
+                speed_multiplier = max(1.0, speed)
+
+                # Apply force in opposite direction of the restricted area
+                if distance_to_rect > 0:  # Avoid division by zero
+                    force = base_force * speed_multiplier
+                    self.dx -= force * dx_to_rect / distance_to_rect
+                    self.dy -= force * dy_to_rect / distance_to_rect
+                else:
+                    # If exactly on the border, apply random force
+                    angle = random.uniform(0, 2 * math.pi)
+                    force = base_force * speed_multiplier
+                    self.dx += force * math.cos(angle)
+                    self.dy += force * math.sin(angle)
+
+        # update the directions
         self.last_dx = self.dx
         self.last_dy = self.dy
         # Update position using X and Y vectors. X and Y are vectors of integers. dx and dy are float, so we must
