@@ -1,5 +1,5 @@
 import pygame
-
+import variables
 
 class Slider:
     def __init__(self, x, y, width, height, min_val, max_val, initial_val, label):
@@ -16,13 +16,13 @@ class Slider:
         self.slider_rect = pygame.Rect(self.slider_x - 5, self.y, 10, self.height) # Small slider rectangle
 
     def draw(self, screen):
-        pygame.draw.rect(screen, (150, 150, 150), (self.x, self.y, self.width, self.height)) # Slider bar
-        pygame.draw.rect(screen, (0, 0, 0), self.slider_rect) # Slider handle
+        theme = variables.get_current_theme()
+        pygame.draw.rect(screen, theme['border'], (self.x, self.y, self.width, self.height)) # Slider bar
+        pygame.draw.rect(screen, theme['text'], self.slider_rect) # Slider handle
 
         font = pygame.font.Font(None, 20)
-        label_text = font.render(f"{self.label}: {self.val:.2f}", True, (0, 0, 0))
+        label_text = font.render(f"{self.label}: {self.val:.2f}", True, theme['text'])
         screen.blit(label_text, (self.x, self.y - 25)) # Label above the slider
-
 
     def update(self, mouse_pos):
         if self.slider_rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]: # Dragging

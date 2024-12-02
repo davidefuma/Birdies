@@ -1,5 +1,5 @@
 import pygame
-
+import variables
 
 class Checkbox:
     def __init__(self, x, y, size, initial_state, label):
@@ -11,12 +11,13 @@ class Checkbox:
         self.rect = pygame.Rect(self.x, self.y, self.size, self.size)
 
     def draw(self, screen):
-        pygame.draw.rect(screen, (255, 255, 255), self.rect, 2)  # White border
+        theme = variables.get_current_theme()
+        pygame.draw.rect(screen, theme['border'], self.rect, 2)  # Border
         if self.state:
-            pygame.draw.rect(screen, (0, 0, 0), self.rect.inflate(-4, -4))  # Filled black box if checked
+            pygame.draw.rect(screen, theme['text'], self.rect.inflate(-4, -4))  # Filled box if checked
 
         font = pygame.font.Font(None, 20)
-        label_text = font.render(self.label, True, (0, 0, 0))
+        label_text = font.render(self.label, True, theme['text'])
         screen.blit(label_text, (self.x + self.size + 10, self.y + 2))
 
     def update(self, mouse_pos):

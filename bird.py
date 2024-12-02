@@ -9,29 +9,42 @@ import variables
 
 class Bird:
 
-    def __init__(self, dx, dy):
-        self.dx = dx
-        self.dy = dy
+    def __init__(self, dx, dy, is_predator=False):
+        self.is_predator = is_predator
+        self.is_dead = False
+        
+        # Adjust speed based on species
+        speed_multiplier = variables.PREDATOR_SPEED_RATIO if is_predator else 1.0
+        self.dx = dx * speed_multiplier
+        self.dy = dy * speed_multiplier
 
         # the directions at the previous step
-        self.last_dx = dx
-        self.last_dy = dy
+        self.last_dx = self.dx
+        self.last_dy = self.dy
 
     def draw(self, bird_index):
 
+        # Get size based on species
+        base_size = 5
+        size = base_size * (variables.PREDATOR_SIZE_RATIO if self.is_predator else 1.0)
+        
+        # Get color based on species and state
+        if self.is_dead:
+            color = variables.get_current_theme()['dead_prey']
+        else:
+            color = variables.get_current_theme()['predator'] if self.is_predator else variables.get_current_theme()['prey']
+
         # Draw triangle
         angle = math.atan2(self.dy, self.dx)
-        size = 5  # Size of the triangle
         points = [
-            (variables.X[bird_index] + size * math.cos(angle), variables.Y[bird_index] + size * math.sin(angle)),  # Tip
-            (
-                variables.X[bird_index] + size * math.cos(angle + 2 * math.pi / 5),
-                variables.Y[bird_index] + size * math.sin(angle + 2 * math.pi / 5)),
-            (
-                variables.X[bird_index] + size * math.cos(angle - 2 * math.pi / 5),
-                variables.Y[bird_index] + size * math.sin(angle - 2 * math.pi / 5)),
+            (variables.X[bird_index] + size * math.cos(angle), 
+             variables.Y[bird_index] + size * math.sin(angle)),  # Tip
+            (variables.X[bird_index] + size * math.cos(angle + 2 * math.pi / 5),
+             variables.Y[bird_index] + size * math.sin(angle + 2 * math.pi / 5)),
+            (variables.X[bird_index] + size * math.cos(angle - 2 * math.pi / 5),
+             variables.Y[bird_index] + size * math.sin(angle - 2 * math.pi / 5)),
         ]
-        pygame.draw.polygon(variables.screen, (255, 145, 145), points)
+        pygame.draw.polygon(variables.screen, color, points)
 
         if variables.show_zones:  # Only draw zones if checkbox is checked
             # Draw collision zone
@@ -51,7 +64,7 @@ class Bird:
             y = variables.Y[bird_index] + variables.collision_zone_radius * math.sin(current_angle)
             points.append((x, y))
 
-        pygame.draw.lines(variables.screen, (145, 0, 0), False, points, 1)
+        pygame.draw.lines(variables.screen, variables.get_current_theme()['border'], False, points, 1)
 
     def draw_interaction_zone(self, bird_index):
         angle = math.atan2(self.dy, self.dx)
@@ -65,15 +78,17 @@ class Bird:
             y = variables.Y[bird_index] + variables.interaction_zone_radius * math.sin(current_angle)
             points.append((x, y))
 
-        pygame.draw.lines(variables.screen, (0, 145, 0), False, points, 1)  # Green lines
+        pygame.draw.lines(variables.screen, variables.get_current_theme()['border'], False, points, 1)  # Green lines
 
     def is_colliding(self, bird_index, other_bird_index, distance):
+        if self.is_dead:  # Dead birds don't collide
+            return False
 
         if distance > variables.collision_zone_radius:  # Outside collision zone radius
             return False
 
         angle_to_other = math.atan2(variables.Y[other_bird_index] - variables.Y[bird_index],
-                                    variables.X[other_bird_index] - variables.X[bird_index])
+                                variables.X[other_bird_index] - variables.X[bird_index])
         angle_of_movement = math.atan2(self.dy, self.dx)
         angle_diff = (angle_to_other - angle_of_movement) % (2 * math.pi)  # Ensure positive angle
 
@@ -117,6 +132,12 @@ class Bird:
             self.dy += variables.shift_to_buddy * dy_to_other / distance
 
     def update(self, bird_index, all_birds, distances, this_step_interactions):
+        # If dead, don't move
+        if self.is_dead:
+            self.dx = 0
+            self.dy = 0
+            return
+
         # Adjust speed with fixed values
         speed_adjustment = random.gauss(0, 0.35)  # 0.35 ìs standard deviation
         self.dx += speed_adjustment
@@ -145,6 +166,14 @@ class Bird:
                     else:
                         # print('bird already had reciprocal interaction')
                         pass
+            j += 1
+
+        # Check for predator-prey collision
+        j = 0
+        for other_bird in all_birds:
+            if other_bird != self:
+                distance = distances[bird_index, j]
+                self.check_predator_prey_collision(bird_index, j, other_bird, distance)
             j += 1
 
         # Inertia
@@ -230,3 +259,20 @@ class Bird:
         # round them
         variables.X[bird_index] += np.round(self.dx)
         variables.Y[bird_index] += np.round(self.dy)
+
+    def check_predator_prey_collision(self, bird_index, other_bird_index, other_bird, distance):
+        if distance > variables.collision_zone_radius:
+            return False
+            
+        # Only check collision if one is predator and other is prey (and prey is alive)
+        if self.is_predator and not other_bird.is_predator and not other_bird.is_dead:
+            angle_to_other = math.atan2(variables.Y[other_bird_index] - variables.Y[bird_index],
+                                      variables.X[other_bird_index] - variables.X[bird_index])
+            angle_of_movement = math.atan2(self.dy, self.dx)
+            angle_diff = (angle_to_other - angle_of_movement) % (2 * math.pi)  # Ensure positive angle
+            
+            # Check if prey is within predator's frontal cone (same as collision detection)
+            if angle_diff < math.radians(100) / 2 or angle_diff > 2 * math.pi - math.radians(100) / 2:
+                other_bird.is_dead = True
+                return True
+        return False
