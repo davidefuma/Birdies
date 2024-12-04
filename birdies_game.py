@@ -5,7 +5,8 @@ import variables
 from Checkbox import Checkbox
 from Slider import Slider
 from Button import Button
-from bird import Bird
+from predator import Predator
+from prey import Prey
 
 # Initialize Pygame
 pygame.init()
@@ -49,16 +50,16 @@ class Game:
     def create_birds(self):
         num_predators = int(self.num_birds * self.predator_ratio)
         num_prey = self.num_birds - num_predators
-
+        
         # Create both predators and prey
         for is_predator in [True, False]:
             num_to_create = num_predators if is_predator else num_prey
             for _ in range(num_to_create):
                 while True:
-                    x = random.randint(variables.BORDER_THICKNESS,
-                                       self.screen_width - variables.panel_width - variables.BORDER_THICKNESS)
-                    y = random.randint(variables.BORDER_THICKNESS,
-                                       self.screen_height - variables.BORDER_THICKNESS)
+                    x = random.randint(variables.BORDER_THICKNESS, 
+                                    self.screen_width - variables.panel_width - variables.BORDER_THICKNESS)
+                    y = random.randint(variables.BORDER_THICKNESS, 
+                                    self.screen_height - variables.BORDER_THICKNESS)
 
                     # Check if the bird is inside any restricted area
                     if not self.is_inside_restricted_areas(x, y):
@@ -66,10 +67,13 @@ class Game:
 
                 dx = random.uniform(-1, 1)
                 dy = random.uniform(-1, 1)
-                self.birds.append(Bird(dx, dy, is_predator))
+                
+                # Create appropriate bird type
+                bird = Predator(dx, dy) if is_predator else Prey(dx, dy)
+                self.birds.append(bird)
                 variables.X.append(x)
                 variables.Y.append(y)
-
+        
         variables.X = np.array(variables.X)
         variables.Y = np.array(variables.Y)
 

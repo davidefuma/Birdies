@@ -1,38 +1,21 @@
 import math
 import random
-
 import numpy as np
 import pygame
-
 import variables
 
-
 class Bird:
-
-    def __init__(self, dx, dy, is_predator=False):
-        self.is_predator = is_predator
+    def __init__(self, dx, dy):
         self.is_dead = False
+        self.dx = dx
+        self.dy = dy
+        self.last_dx = dx
+        self.last_dy = dy
         
-        # Adjust speed based on species
-        speed_multiplier = variables.PREDATOR_SPEED_RATIO if is_predator else 1.0
-        self.dx = dx * speed_multiplier
-        self.dy = dy * speed_multiplier
-
-        # the directions at the previous step
-        self.last_dx = self.dx
-        self.last_dy = self.dy
-
     def draw(self, bird_index):
-
         # Get size based on species
-        base_size = 5
-        size = base_size * (variables.PREDATOR_SIZE_RATIO if self.is_predator else 1.0)
-        
-        # Get color based on species and state
-        if self.is_dead:
-            color = variables.get_current_theme()['dead_prey']
-        else:
-            color = variables.get_current_theme()['predator'] if self.is_predator else variables.get_current_theme()['prey']
+        size = self.get_size()
+        color = self.get_color()
 
         # Draw triangle
         angle = math.atan2(self.dy, self.dx)
@@ -47,10 +30,26 @@ class Bird:
         pygame.draw.polygon(variables.screen, color, points)
 
         if variables.show_zones:  # Only draw zones if checkbox is checked
-            # Draw collision zone
             self.draw_collision_zone(bird_index)
-            # Draw interaction zone
             self.draw_interaction_zone(bird_index)
+            
+    def get_size(self):
+        """Override in subclasses to define specific sizes"""
+        return 5  # Base size
+        
+    def get_color(self):
+        """Override in subclasses to define specific colors"""
+        if self.is_dead:
+            return variables.get_current_theme()['dead_prey']
+        return (255, 255, 255)  # Default white
+        
+    def can_be_killed(self):
+        """Override in subclasses to define if this bird can be killed"""
+        return False
+        
+    def can_kill(self):
+        """Override in subclasses to define if this bird can kill others"""
+        return False
 
     def draw_collision_zone(self, bird_index):
         angle = math.atan2(self.dy, self.dx)  # Angle of movement
@@ -264,14 +263,13 @@ class Bird:
         if distance > variables.collision_zone_radius:
             return False
             
-        # Only check collision if one is predator and other is prey (and prey is alive)
-        if self.is_predator and not other_bird.is_predator and not other_bird.is_dead:
+        # Only check collision if this bird can kill and other bird can be killed
+        if self.can_kill() and other_bird.can_be_killed() and not other_bird.is_dead:
             angle_to_other = math.atan2(variables.Y[other_bird_index] - variables.Y[bird_index],
                                       variables.X[other_bird_index] - variables.X[bird_index])
             angle_of_movement = math.atan2(self.dy, self.dx)
-            angle_diff = (angle_to_other - angle_of_movement) % (2 * math.pi)  # Ensure positive angle
+            angle_diff = (angle_to_other - angle_of_movement) % (2 * math.pi)
             
-            # Check if prey is within predator's frontal cone (same as collision detection)
             if angle_diff < math.radians(100) / 2 or angle_diff > 2 * math.pi - math.radians(100) / 2:
                 other_bird.is_dead = True
                 return True
