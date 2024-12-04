@@ -29,11 +29,31 @@ restricted_areas = [
 # Predator-Prey constants
 PREDATOR_SIZE_RATIO = 2.0  # Predators are twice as big as prey
 PREDATOR_SPEED_RATIO = 0.6  # Predators move at 60% of prey speed
+PREDATOR_INITIAL_ENERGY = 100  # Starting energy for predators
+PREDATOR_ENERGY_LOSS_INTERVAL = 10  # Lose energy every X simulation cycles
+PREDATOR_ENERGY_LOSS_AMOUNT = 1  # Amount of energy lost per interval
+PREDATOR_SPEED_ENERGY_COST = 0.2  # Additional energy cost per unit of speed above base speed
+PREDATOR_BASE_SPEED = 1.0  # Base speed threshold for additional energy cost
+ENERGY_BAR_WIDTH = 20  # Width of energy bar in pixels
+ENERGY_BAR_HEIGHT = 3  # Height of energy bar in pixels
+ENERGY_BAR_OFFSET = 15  # Vertical offset of energy bar above predator
 
 # Colors
 PREDATOR_COLOR = (255, 0, 0)  # Red
 PREY_COLOR = (0, 255, 0)  # Green
+SLIDER_HANDLE_COLOR = (255, 165, 0)  # Orange
 DEAD_PREY_COLOR = (0, 0, 0)  # Black
+ENERGY_BAR_HIGH = (0, 255, 0)  # Green for high energy
+ENERGY_BAR_MEDIUM = (255, 255, 0)  # Yellow for medium energy
+ENERGY_BAR_LOW = (255, 0, 0)  # Red for low energy
+CHART_GRID_COLOR = (128, 128, 128)  # Gray for chart grid
+
+# Chart settings
+CHART_WIDTH = panel_width - (2 * 20)  # Width to fit panel with margins
+CHART_HEIGHT = 150  # Taller chart for better visibility
+CHART_MARGIN = 20  # Increased margin for better spacing
+CHART_HISTORY_LENGTH = 200  # Number of data points to show
+POPULATION_FONT_SIZE = 20
 
 # Dark/Light mode colors
 is_dark_mode = True  # Default to dark mode

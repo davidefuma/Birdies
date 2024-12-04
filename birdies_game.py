@@ -7,6 +7,7 @@ from Slider import Slider
 from Button import Button
 from predator import Predator
 from prey import Prey
+from PopulationChart import PopulationChart
 
 # Initialize Pygame
 pygame.init()
@@ -36,7 +37,7 @@ sliders = [
 
 
 class Game:
-    def __init__(self, num_birds=10, predator_ratio=0.3):
+    def __init__(self, num_birds=40, predator_ratio=0.3):
         self.num_birds = num_birds
         self.predator_ratio = predator_ratio
         self.screen_width = variables.screen_width
@@ -46,6 +47,10 @@ class Game:
         pygame.display.set_caption("Predator-Prey Simulation")
 
         self.create_birds()
+        self.create_ui_elements()
+        chart_x = self.screen_width - variables.panel_width - 220  # 200 width + 20 margin
+        chart_y = self.screen_height - 220  # 200 height + 20 margin
+        self.population_chart = PopulationChart(chart_x, chart_y)
 
     def create_birds(self):
         num_predators = int(self.num_birds * self.predator_ratio)
@@ -77,6 +82,18 @@ class Game:
         variables.X = np.array(variables.X)
         variables.Y = np.array(variables.Y)
 
+    def create_ui_elements(self):
+        self.show_zones_checkbox = Checkbox(panel_x + 20, 300, 20, variables.show_zones, "Show Zones")
+        self.theme_button = Button(panel_x + 20, 350, 160, 30, "Toggle Dark/Light Mode")
+        self.sliders = [
+            Slider(panel_x + 20, 50, variables.panel_width - 40, 20, 0.0, 1.0, variables.inertia, "Inertia"),
+            Slider(panel_x + 20, 100, variables.panel_width - 40, 20, 1, 100, variables.collision_zone_radius,
+                   "Collision Radius"),
+            Slider(panel_x + 20, 150, variables.panel_width - 40, 20, 1, 100, variables.interaction_zone_radius,
+                   "Interaction Radius"),
+            Slider(panel_x + 20, 200, variables.panel_width - 40, 20, 0.0, 2.0, variables.shift_to_buddy, "Shift to Buddy"),
+        ]
+
     def is_inside_restricted_areas(self, x, y):
         for rect in variables.restricted_areas:
             rect_x, rect_y, rect_width, rect_height = rect
@@ -95,9 +112,9 @@ class Game:
                 if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.MOUSEMOTION:
                     if pygame.mouse.get_pressed()[0]:  # Left mouse button held down
                         mouse_pos = pygame.mouse.get_pos()
-                        checkbox.update(mouse_pos)
-                        theme_button.update(mouse_pos)
-                        for slider in sliders:
+                        self.show_zones_checkbox.update(mouse_pos)
+                        self.theme_button.update(mouse_pos)
+                        for slider in self.sliders:
                             slider.update(mouse_pos)
 
             # Update birds
@@ -110,19 +127,19 @@ class Game:
             pygame.draw.rect(variables.screen, theme['panel'], panel_rect)
 
             # Draw sliders
-            for slider in sliders:
+            for slider in self.sliders:
                 slider.draw(variables.screen)
             # Draw checkbox
-            checkbox.draw(variables.screen)
+            self.show_zones_checkbox.draw(variables.screen)
             # Draw theme button
-            theme_button.draw(variables.screen)
+            self.theme_button.draw(variables.screen)
 
             # Update global parameters from sliders
-            variables.inertia = sliders[0].val
-            variables.collision_zone_radius = sliders[1].val
-            variables.interaction_zone_radius = sliders[2].val
-            variables.shift_to_buddy = sliders[3].val
-            variables.show_zones = checkbox.state
+            variables.inertia = self.sliders[0].val
+            variables.collision_zone_radius = self.sliders[1].val
+            variables.interaction_zone_radius = self.sliders[2].val
+            variables.shift_to_buddy = self.sliders[3].val
+            variables.show_zones = self.show_zones_checkbox.state
 
             pygame.display.flip()
 
@@ -139,6 +156,11 @@ class Game:
         for bird_index, bird in enumerate(self.birds):  # Iterate using index
             this_step_interactions[bird_index] = {}
             bird.update(bird_index, self.birds, distances, this_step_interactions)  # Pass the bird's index
+
+        # Update population statistics
+        num_predators = sum(1 for bird in self.birds if isinstance(bird, Predator) and not bird.is_dead)
+        num_prey = sum(1 for bird in self.birds if isinstance(bird, Prey) and not bird.is_dead)
+        self.population_chart.update(num_predators, num_prey)
 
     def draw(self):
         theme = variables.get_current_theme()
@@ -159,6 +181,20 @@ class Game:
 
         for bird_index, bird in enumerate(self.birds):
             bird.draw(bird_index)
+
+        # Draw UI panel background
+        pygame.draw.rect(variables.screen, theme['panel'],
+                        (self.screen_width - variables.panel_width, 0,
+                         variables.panel_width, self.screen_height))
+
+        # Draw UI elements
+        for slider in self.sliders:
+            slider.draw(variables.screen)
+        self.show_zones_checkbox.draw(variables.screen)
+        self.theme_button.draw(variables.screen)
+
+        # Draw population chart
+        self.population_chart.draw(variables.screen)
 
 
 if __name__ == "__main__":

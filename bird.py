@@ -131,56 +131,85 @@ class Bird:
             self.dy += variables.shift_to_buddy * dy_to_other / distance
 
     def update(self, bird_index, all_birds, distances, this_step_interactions):
-        # If dead, don't move
+        # Update energy if this bird has an energy system
+        if hasattr(self, 'update_energy'):
+            self.update_energy()
+            
         if self.is_dead:
             self.dx = 0
             self.dy = 0
             return
 
-        # Adjust speed with fixed values
-        speed_adjustment = random.gauss(0, 0.35)  # 0.35 ìs standard deviation
+        # Initialize lists for different zones
+        collision_zone_birds = []
+        interaction_zone_birds = []
+
+        # Check all other birds
+        for other_bird_index, (other_bird, distance) in enumerate(zip(all_birds, distances[bird_index])):
+            if other_bird_index == bird_index:
+                continue
+                
+            # Skip dead birds for both collision and interaction
+            if other_bird.is_dead:
+                continue
+
+            # Check for predator-prey collision
+            if self.check_predator_prey_collision(bird_index, other_bird_index, other_bird, distance):
+                continue
+
+            # Sort birds into zones (only for living birds)
+            if distance < variables.collision_zone_radius:
+                collision_zone_birds.append((other_bird_index, distance))
+            elif distance < variables.interaction_zone_radius:
+                interaction_zone_birds.append((other_bird_index, distance))
+
+        # Apply collision avoidance (from living birds only)
+        if collision_zone_birds:
+            self.handle_collisions(bird_index, collision_zone_birds)
+
+        # Apply interaction rules (with living birds only)
+        if interaction_zone_birds:
+            self.handle_interactions(bird_index, interaction_zone_birds, all_birds=all_birds)
+
+        # Update position
+        self.update_position(bird_index)
+
+    def handle_collisions(self, bird_index, collision_zone_birds):
+        for other_bird_index, distance in collision_zone_birds:
+            self.avoid_collision(bird_index, other_bird_index)
+
+    def handle_interactions(self, bird_index, interaction_zone_birds, all_birds):
+        for other_bird_index, distance in interaction_zone_birds:
+            self.align_direction(bird_index, other_bird_index, all_birds[other_bird_index], distance)
+
+    def update_position(self, bird_index):
+        """Update bird position considering inertia, borders, and restricted areas"""
+        # Apply inertia
+        self.dx = variables.inertia * self.last_dx + (1 - variables.inertia) * self.dx
+        self.dy = variables.inertia * self.last_dy + (1 - variables.inertia) * self.dy
+        
+        # Adjust speed with random variation
+        speed_adjustment = random.gauss(0, 0.35)  # 0.35 is standard deviation
         self.dx += speed_adjustment
         self.dy += speed_adjustment
 
-        # calculate distances between all the couples of birds
-        disx = variables.X[:, np.newaxis] - variables.X  # Calculate x-differences for all pairs
-        disy = variables.Y[:, np.newaxis] - variables.Y  # Calculate y-differences for all pairs
-        distances = np.hypot(disx, disy)  # Calculate distances for all pairs
-
-        # Collision detection with other birds and avoidance
-        j = 0
-
-        for other_bird in all_birds:
-            if other_bird != self:
-                distance = distances[bird_index, j]
-                if self.is_colliding(bird_index, j, distance):  # collision zone
-                    self.avoid_collision(bird_index, j)
-
-                # if the bird_index has already had an interaction with bird j this step, avoid the reciprocal interaction
-                else:
-                    if j not in this_step_interactions or bird_index not in this_step_interactions[j]:
-                        if self.is_in_interaction_zone(bird_index, j, distance):  # Interaction zone
-                            self.align_direction(bird_index, j, other_bird, distance)
-                            this_step_interactions[bird_index][j] = True
-                    else:
-                        # print('bird already had reciprocal interaction')
-                        pass
-            j += 1
-
-        # Check for predator-prey collision
-        j = 0
-        for other_bird in all_birds:
-            if other_bird != self:
-                distance = distances[bird_index, j]
-                self.check_predator_prey_collision(bird_index, j, other_bird, distance)
-            j += 1
-
-        # Inertia
-        self.dx = variables.inertia * self.last_dx + (1 - variables.inertia) * self.dx
-        self.dy = variables.inertia * self.last_dy + (1 - variables.inertia) * self.dy
-
-        # Border collision avoidance with improved logic
-        avoidance_radius = variables.collision_zone_radius * 2  # Same detection radius as restricted areas
+        # Border collision avoidance
+        self.handle_border_collision(bird_index)
+        
+        # Avoid restricted areas
+        self.handle_restricted_areas(bird_index)
+        
+        # Update last direction
+        self.last_dx = self.dx
+        self.last_dy = self.dy
+        
+        # Update position
+        variables.X[bird_index] += np.round(self.dx)
+        variables.Y[bird_index] += np.round(self.dy)
+        
+    def handle_border_collision(self,bird_index):
+        """Handle collision with screen borders"""
+        avoidance_radius = variables.collision_zone_radius * 2
         speed = np.hypot(self.dx, self.dy)
         speed_multiplier = max(1.0, speed)
         
@@ -211,34 +240,35 @@ class Bird:
             base_force = 1.0 if distance_to_bottom <= 0 else (1 - distance_to_bottom/avoidance_radius) * 0.5
             force = base_force * speed_multiplier
             self.dy -= force  # Push up
-
-        # Avoid restricted areas based on collision zone radius
+            
+    def handle_restricted_areas(self,bird_index):
+        """Handle collision with restricted areas"""
         for rect in variables.restricted_areas:
             rect_x, rect_y, rect_width, rect_height = rect
-
+            
             # Calculate if bird is inside the restricted area
             is_inside = (rect_x < variables.X[bird_index] < rect_x + rect_width and
-                         rect_y < variables.Y[bird_index] < rect_y + rect_height)
-
+                        rect_y < variables.Y[bird_index] < rect_y + rect_height)
+                        
             # Calculate the closest point on the rectangle to the bird
             closest_x = max(rect_x, min(variables.X[bird_index], rect_x + rect_width))
             closest_y = max(rect_y, min(variables.Y[bird_index], rect_y + rect_height))
-
+            
             # Calculate the distance and direction from the bird to the closest point
             dx_to_rect = closest_x - variables.X[bird_index]
             dy_to_rect = closest_y - variables.Y[bird_index]
             distance_to_rect = np.hypot(dx_to_rect, dy_to_rect)
-
+            
             # Calculate avoidance force based on distance
-            avoidance_radius = variables.collision_zone_radius * 2  # Increase detection radius
+            avoidance_radius = variables.collision_zone_radius * 2
             if distance_to_rect < avoidance_radius or is_inside:
                 # Calculate base force (stronger when closer)
                 base_force = 1.0 if is_inside else (1 - distance_to_rect / avoidance_radius) * 0.5
-
-                # Calculate speed-based multiplier (faster birds need stronger avoidance)
+                
+                # Calculate speed-based multiplier
                 speed = np.hypot(self.dx, self.dy)
                 speed_multiplier = max(1.0, speed)
-
+                
                 # Apply force in opposite direction of the restricted area
                 if distance_to_rect > 0:  # Avoid division by zero
                     force = base_force * speed_multiplier
@@ -250,14 +280,6 @@ class Bird:
                     force = base_force * speed_multiplier
                     self.dx += force * math.cos(angle)
                     self.dy += force * math.sin(angle)
-
-        # update the directions
-        self.last_dx = self.dx
-        self.last_dy = self.dy
-        # Update position using X and Y vectors. X and Y are vectors of integers. dx and dy are float, so we must
-        # round them
-        variables.X[bird_index] += np.round(self.dx)
-        variables.Y[bird_index] += np.round(self.dy)
 
     def check_predator_prey_collision(self, bird_index, other_bird_index, other_bird, distance):
         if distance > variables.collision_zone_radius:
@@ -272,5 +294,8 @@ class Bird:
             
             if angle_diff < math.radians(100) / 2 or angle_diff > 2 * math.pi - math.radians(100) / 2:
                 other_bird.is_dead = True
+                # If this is a predator, restore its energy
+                if hasattr(self, 'feed'):
+                    self.feed()
                 return True
         return False

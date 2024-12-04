@@ -18,7 +18,7 @@ class Slider:
     def draw(self, screen):
         theme = variables.get_current_theme()
         pygame.draw.rect(screen, theme['border'], (self.x, self.y, self.width, self.height)) # Slider bar
-        pygame.draw.rect(screen, theme['text'], self.slider_rect) # Slider handle
+        pygame.draw.rect(screen, variables.SLIDER_HANDLE_COLOR, self.slider_rect) # Slider handle in orange
 
         font = pygame.font.Font(None, 20)
         label_text = font.render(f"{self.label}: {self.val:.2f}", True, theme['text'])
