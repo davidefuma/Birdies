@@ -1,39 +1,74 @@
-# Birdies
+# Flyes - Predator-Prey Simulation
 
-A simple 2D fly simulation game built with Pygame.
+A dynamic 2D predator-prey simulation game built with Pygame, featuring complex flocking behaviors and ecosystem dynamics.
 
-## How to Play
+## Features
 
-1.  Make sure you have Pygame installed (`pip install pygame`).
-2.  Run the `birdies_game.py` script.
-3.  Use the sliders in the control panel to adjust the simulation parameters:
-    *   **Inertia:** Controls how much the flies maintain their previous direction.
-    *   **Speed Reduction:** Scales the overall speed of the flies.
-    *   **Sensible Radius:** Radius of the sensible zone (used for collision avoidance).
-    *   **Interaction Radius:** Radius of the interaction zone (used for aligning direction).
-    *   **Shift to Buddy:**  How much flies move towards others in the interaction zone.
+### Core Mechanics
+- Two distinct species: Predators and Prey
+- Realistic flocking behavior with collision avoidance
+- Energy system for predators
+- Population tracking and visualization
+- Interactive control panel with real-time parameter adjustment
+
+### Advanced Behaviors
+- Predators actively hunt and consume prey
+- Dead birds remain stationary and don't influence living birds
+- Speed-based energy consumption for predators
+- Dynamic interaction zones for movement and alignment
+- Intelligent border and restricted area avoidance
 
 ## Controls
-No keyboard or mouse controls within the game board.  All interaction is through the control panel sliders.
 
-## Launch
+### Control Panel
+- **Inertia:** Controls how much birds maintain their previous direction
+- **Speed Reduction:** Scales the overall speed of birds
+- **Sensible Radius:** Radius of the collision avoidance zone
+- **Interaction Radius:** Radius of the flocking alignment zone
+- **Shift to Buddy:** Strength of movement towards other birds
+- **Show Zones:** Toggle visibility of interaction zones
+- **Theme Toggle:** Switch between light and dark modes
 
+### Population Tracking
+- Real-time population counter
+- Semi-transparent population history chart
+- Color-coded tracking for predators and prey
+
+## Installation
+
+1. Ensure you have Python 3.x installed
+2. Install required dependencies:
+```bash
+pip install pygame numpy
 ```
+
+## Running the Simulation
+
+```bash
 python birdies_game.py
 ```
 
-## Requirements
+## Technical Details
 
-*   Python 3
-*   Pygame
+### Bird Behaviors
+- Birds follow complex flocking rules based on nearby neighbors
+- Dead birds are completely ignored in all calculations:
+  - No collision detection with dead birds
+  - No flocking influence from dead birds
+  - Dead birds remain stationary
+- Predators consume energy while moving and hunting
+- Prey turn black and stop moving when killed
 
-## Installation of pygame library
-
-```bash
-pip install pygame
-```
+### Performance Optimizations
+- Efficient collision detection algorithms
+- Optimized movement calculations
+- Smart rendering of interaction zones
 
 ## Contributing
 
-
-Feel free to fork the project and submit pull requests!
+Feel free to fork the project and submit pull requests! Areas for potential improvement:
+- Additional species types
+- More complex hunting behaviors
+- Environmental factors
+- Genetic evolution
+- Performance optimizations
