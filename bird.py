@@ -12,24 +12,68 @@ class Bird:
         self.last_dx = dx
         self.last_dy = dy
         
-    def draw(self, bird_index):
-        # Get size based on species
+    def draw(self, bird_index, screen):
+        # Calculate rotation angle based on movement direction
+        angle = math.degrees(math.atan2(self.dy, self.dx))
         size = self.get_size()
         color = self.get_color()
-
-        # Draw triangle
-        angle = math.atan2(self.dy, self.dx)
-        points = [
-            (variables.X[bird_index] + size * math.cos(angle), 
-             variables.Y[bird_index] + size * math.sin(angle)),  # Tip
-            (variables.X[bird_index] + size * math.cos(angle + 2 * math.pi / 5),
-             variables.Y[bird_index] + size * math.sin(angle + 2 * math.pi / 5)),
-            (variables.X[bird_index] + size * math.cos(angle - 2 * math.pi / 5),
-             variables.Y[bird_index] + size * math.sin(angle - 2 * math.pi / 5)),
-        ]
-        pygame.draw.polygon(variables.screen, color, points)
-
-        if variables.show_zones:  # Only draw zones if checkbox is checked
+        
+        if self.is_dead:
+            # Draw dead bird with fade effect
+            alpha = max(30, self.fade_alpha if hasattr(self, 'fade_alpha') else 255)
+            if hasattr(self, 'fade_alpha'):
+                self.fade_alpha = max(30, self.fade_alpha - 0.5)  # Gradual fade
+            else:
+                self.fade_alpha = 255
+            
+            # Create surface for dead bird
+            bird_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+            pygame.draw.polygon(bird_surface, (*color[:3], alpha), [
+                (size * 2, size),  # Tip
+                (0, size - size/2),  # Top back
+                (size/2, size),  # Back indent
+                (0, size + size/2),  # Bottom back
+            ])
+        else:
+            # Create surface for living bird
+            bird_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+            
+            # Draw the main body
+            pygame.draw.polygon(bird_surface, color, [
+                (size * 2, size),  # Nose
+                (0, size - size/2),  # Top back
+                (size/2, size),  # Back indent
+                (0, size + size/2),  # Bottom back
+            ])
+            
+            # Add eye
+            eye_pos = (size * 1.5, size)
+            pygame.draw.circle(bird_surface, (255, 255, 255), eye_pos, size/6)  # White of eye
+            pygame.draw.circle(bird_surface, (0, 0, 0), eye_pos, size/10)  # Pupil
+            
+            # Add motion blur effect for fast-moving birds
+            speed = math.hypot(self.dx, self.dy)
+            if speed > 2:
+                blur_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+                blur_color = (*color[:3], 50)  # Very transparent
+                pygame.draw.polygon(blur_surface, blur_color, [
+                    (size * 2, size),
+                    (0, size - size/2),
+                    (size/2, size),
+                    (0, size + size/2),
+                ])
+                screen.blit(pygame.transform.rotate(blur_surface, -angle),
+                          (variables.X[bird_index] - size + self.dx,
+                           variables.Y[bird_index] - size + self.dy))
+        
+        # Rotate and draw the bird
+        rotated_bird = pygame.transform.rotate(bird_surface, -angle)
+        screen.blit(rotated_bird,
+                   (variables.X[bird_index] - rotated_bird.get_width()/2,
+                    variables.Y[bird_index] - rotated_bird.get_height()/2))
+        
+        # Draw interaction zones if enabled
+        if variables.show_zones:
             self.draw_collision_zone(bird_index)
             self.draw_interaction_zone(bird_index)
             

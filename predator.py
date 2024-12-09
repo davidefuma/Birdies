@@ -40,9 +40,9 @@ class Predator(Bird):
         """Restore energy after killing prey"""
         self.energy = variables.PREDATOR_INITIAL_ENERGY
         
-    def draw(self, bird_index):
+    def draw(self, bird_index,screen):
         # Draw the bird triangle
-        super().draw(bird_index)
+        super().draw(bird_index,screen)
         
         # Draw energy bar if alive
         if not self.is_dead:

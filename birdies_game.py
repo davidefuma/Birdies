@@ -52,6 +52,14 @@ class Game:
         chart_y = self.screen_height - 220  # 200 height + 20 margin
         self.population_chart = PopulationChart(chart_x, chart_y)
 
+        # Initialize particle system
+        self.particles = []
+
+        # Initialize background surface for efficient updates
+        self.background_surface = pygame.Surface((self.screen_width, self.screen_height))
+        self.background_surface.fill(variables.get_current_theme()['background'])
+        self.draw_static_elements()
+
     def create_birds(self):
         num_predators = int(self.num_birds * self.predator_ratio)
         num_prey = self.num_birds - num_predators
@@ -113,7 +121,10 @@ class Game:
                     if pygame.mouse.get_pressed()[0]:  # Left mouse button held down
                         mouse_pos = pygame.mouse.get_pos()
                         self.show_zones_checkbox.update(mouse_pos)
-                        self.theme_button.update(mouse_pos)
+                        if self.theme_button.update(mouse_pos):
+                            # Update background surface when theme changes
+                            self.background_surface.fill(variables.get_current_theme()['background'])
+                            self.draw_static_elements()
                         for slider in self.sliders:
                             slider.update(mouse_pos)
 
@@ -162,28 +173,18 @@ class Game:
         num_prey = sum(1 for bird in self.birds if isinstance(bird, Prey) and not bird.is_dead)
         self.population_chart.update(num_predators, num_prey)
 
+        # Update particles
+        self.update_particles()
+
     def draw(self):
-        theme = variables.get_current_theme()
-        variables.screen.fill(theme['background'])
+        # Blit the background surface instead of filling the screen each frame
+        variables.screen.blit(self.background_surface, (0, 0))
         
-        # Draw solid borders
-        pygame.draw.rect(variables.screen, theme['border'], 
-                        (variables.BORDER_THICKNESS, variables.BORDER_THICKNESS,
-                         self.screen_width - variables.panel_width - 2 * variables.BORDER_THICKNESS,
-                         self.screen_height - 2 * variables.BORDER_THICKNESS),
-                        2)  # Border with thickness of 2
-
-        # Draw all restricted areas
-        for rect in variables.restricted_areas:
-            rect_x, rect_y, rect_width, rect_height = rect
-            pygame.draw.rect(variables.screen, theme['restricted'],
-                           (rect_x, rect_y, rect_width, rect_height))
-
         for bird_index, bird in enumerate(self.birds):
-            bird.draw(bird_index)
+            bird.draw(bird_index, variables.screen)
 
         # Draw UI panel background
-        pygame.draw.rect(variables.screen, theme['panel'],
+        pygame.draw.rect(variables.screen, variables.get_current_theme()['panel'],
                         (self.screen_width - variables.panel_width, 0,
                          variables.panel_width, self.screen_height))
 
@@ -195,6 +196,61 @@ class Game:
 
         # Draw population chart
         self.population_chart.draw(variables.screen)
+
+        # Draw particles
+        self.draw_particles()
+
+    def draw_static_elements(self):
+        # Draw solid borders on the background surface
+        pygame.draw.rect(self.background_surface, variables.get_current_theme()['border'],
+                         (variables.BORDER_THICKNESS, variables.BORDER_THICKNESS,
+                          self.screen_width - variables.panel_width - 2 * variables.BORDER_THICKNESS,
+                          self.screen_height - 2 * variables.BORDER_THICKNESS),
+                         2)  # Border with thickness of 2
+
+        # Draw all restricted areas on the background surface
+        for rect in variables.restricted_areas:
+            rect_x, rect_y, rect_width, rect_height = rect
+            pygame.draw.rect(self.background_surface, variables.get_current_theme()['restricted'],
+                             (rect_x, rect_y, rect_width, rect_height))
+
+    def update_particles(self):
+        # Efficiently update particles
+        for particle in self.particles:
+            particle.update()
+            if particle.is_dead():
+                self.particles.remove(particle)
+
+    def draw_particles(self):
+        # Efficiently draw particles
+        for particle in self.particles:
+            particle.draw(variables.screen)
+
+    def add_particle(self, position, velocity):
+        # Add a new particle to the system
+        self.particles.append(Particle(position, velocity))
+
+
+class Particle:
+    def __init__(self, position, velocity):
+        self.position = position
+        self.velocity = velocity
+        self.lifetime = 100  # Lifetime of the particle
+
+    def update(self):
+        # Update particle position and reduce lifetime
+        self.position = (self.position[0] + self.velocity[0],
+                         self.position[1] + self.velocity[1])
+        self.lifetime -= 1
+
+    def is_dead(self):
+        # Check if the particle is dead
+        return self.lifetime <= 0
+
+    def draw(self, screen):
+        # Draw the particle on the screen
+        pygame.draw.circle(screen, (255, 255, 255),
+                           (int(self.position[0]), int(self.position[1])), 3)
 
 
 if __name__ == "__main__":
