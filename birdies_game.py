@@ -37,9 +37,9 @@ sliders = [
 
 
 class Game:
-    def __init__(self, num_birds=40, predator_ratio=0.3):
-        self.num_birds = num_birds
-        self.predator_ratio = predator_ratio
+    def __init__(self):
+        self.num_birds = variables.num_birds
+        self.predator_ratio = variables.predator_ratio
         self.screen_width = variables.screen_width
         self.screen_height = variables.screen_height
         self.birds = []
@@ -64,9 +64,14 @@ class Game:
         self.draw_static_elements()
 
     def create_birds(self):
-        num_predators = int(self.num_birds * self.predator_ratio)
-        num_prey = self.num_birds - num_predators
-        
+        num_predators = int(variables.num_birds * variables.predator_ratio)
+        num_prey = variables.num_birds - num_predators
+
+        # Initialize bird lists
+        self.birds = []
+        variables.X = []
+        variables.Y = []
+
         # Create both predators and prey
         for is_predator in [True, False]:
             num_to_create = num_predators if is_predator else num_prey

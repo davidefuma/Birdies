@@ -6,13 +6,13 @@ inertia = 0.9
 collision_zone_radius = 15
 interaction_zone_radius = 30
 shift_to_buddy = 0.7  # Adjust this value to control the shift strength
-show_zones = True  # Initially show the zones
+show_zones = False  # Initially dont show the zones
 
 # Screen dimensions
 panel_width = 200
 screen_width = 1400
 screen_height = 800
-BORDER_THICKNESS = 5  # Define border thickness
+BORDER_THICKNESS = 9  # Define border thickness
 screen = pygame.display.set_mode((screen_width, screen_height))
 
 X = []  # Vector to store x-coordinates of birds
@@ -25,6 +25,10 @@ restricted_areas = [
     (400, 150, 150, 200),  # Area 2
     (600, 50, 100, 300),  # Area 3
 ]
+
+# Simulation Configuration
+num_birds = 50  # Total number of birds in the simulation
+predator_ratio = 0.2  # Proportion of predators in the total bird population
 
 # Predator-Prey constants
 PREDATOR_SIZE_RATIO = 2.0  # Predators are twice as big as prey

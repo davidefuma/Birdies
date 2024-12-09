@@ -26,41 +26,57 @@ class Bird:
             else:
                 self.fade_alpha = 255
             
-            # Create surface for dead bird
-            bird_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+            # Create surface for dead bird with more detailed shape
+            bird_surface = pygame.Surface((size * 3, size * 3), pygame.SRCALPHA)
             pygame.draw.polygon(bird_surface, (*color[:3], alpha), [
-                (size * 2, size),  # Tip
-                (0, size - size/2),  # Top back
-                (size/2, size),  # Back indent
-                (0, size + size/2),  # Bottom back
+                (size * 3, size * 1.5),  # Elongated tip
+                (0, size),  # Top back
+                (size, size * 1.5),  # Back indent
+                (0, size * 2),  # Bottom back
+            ])
+            
+            # Add subtle wing-like details
+            wing_color = (*color[:3], alpha // 2)
+            pygame.draw.polygon(bird_surface, wing_color, [
+                (size * 2, size * 1.5),
+                (size, size),
+                (size * 1.5, size * 1.5),
             ])
         else:
             # Create surface for living bird
-            bird_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+            bird_surface = pygame.Surface((size * 3, size * 3), pygame.SRCALPHA)
             
-            # Draw the main body
+            # Draw the main body with more dynamic shape
             pygame.draw.polygon(bird_surface, color, [
-                (size * 2, size),  # Nose
-                (0, size - size/2),  # Top back
-                (size/2, size),  # Back indent
-                (0, size + size/2),  # Bottom back
+                (size * 3, size * 1.5),  # Elongated nose
+                (0, size),  # Top back
+                (size, size * 1.5),  # Back indent
+                (0, size * 2),  # Bottom back
             ])
             
-            # Add eye
-            eye_pos = (size * 1.5, size)
-            pygame.draw.circle(bird_surface, (255, 255, 255), eye_pos, size/6)  # White of eye
-            pygame.draw.circle(bird_surface, (0, 0, 0), eye_pos, size/10)  # Pupil
+            # Add more detailed eye
+            eye_pos = (size * 2.5, size * 1.5)
+            pygame.draw.circle(bird_surface, (255, 255, 255), eye_pos, size/4)  # Larger white of eye
+            pygame.draw.circle(bird_surface, (0, 0, 0), eye_pos, size/6)  # Larger pupil
+            
+            # Add wing details
+            wing_color = tuple(max(0, c - 30) for c in color[:3])  # Slightly darker wing color
+            pygame.draw.polygon(bird_surface, wing_color, [
+                (size * 2, size * 1.5),
+                (size, size),
+                (size * 1.5, size * 1.5),
+            ])
             
             # Add motion blur effect for fast-moving birds
             speed = math.hypot(self.dx, self.dy)
             if speed > 2:
-                blur_surface = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
+                blur_surface = pygame.Surface((size * 3, size * 3), pygame.SRCALPHA)
                 blur_color = (*color[:3], 50)  # Very transparent
                 pygame.draw.polygon(blur_surface, blur_color, [
-                    (size * 2, size),
-                    (0, size - size/2),
-                    (size/2, size),
-                    (0, size + size/2),
+                    (size * 3, size * 1.5),
+                    (0, size),
+                    (size, size * 1.5),
+                    (0, size * 2),
                 ])
                 screen.blit(pygame.transform.rotate(blur_surface, -angle),
                           (variables.X[bird_index] - size + self.dx,
@@ -76,10 +92,10 @@ class Bird:
         if variables.show_zones:
             self.draw_collision_zone(bird_index)
             self.draw_interaction_zone(bird_index)
-            
+        
     def get_size(self):
         """Override in subclasses to define specific sizes"""
-        return 5  # Base size
+        return 10  # Increased base size from 5 to 10
         
     def get_color(self):
         """Override in subclasses to define specific colors"""
