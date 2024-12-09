@@ -270,8 +270,7 @@ class Game:
             end = min(start + self.batch_size, len(self.birds))
             for bird_index in range(start, end):
                 bird = self.birds[bird_index]
-                if not bird.is_dead:
-                    bird.draw(bird_index, variables.screen)
+                bird.draw(bird_index, variables.screen)
         
         # Render particles in batches
         for start in range(0, len(self.particles), self.batch_size):

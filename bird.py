@@ -4,6 +4,7 @@ import numpy as np
 import pygame
 import variables
 
+
 class Bird:
     def __init__(self, dx, dy):
         self.is_dead = False
@@ -19,10 +20,10 @@ class Bird:
         color = self.get_color()
         
         if self.is_dead:
-            # Draw dead bird with fade effect
-            alpha = max(30, self.fade_alpha if hasattr(self, 'fade_alpha') else 255)
+            # Draw dead bird with enhanced fade effect
+            alpha = max(50, self.fade_alpha if hasattr(self, 'fade_alpha') else 255)  # Increased minimum alpha
             if hasattr(self, 'fade_alpha'):
-                self.fade_alpha = max(30, self.fade_alpha - 0.5)  # Gradual fade
+                self.fade_alpha = max(50, self.fade_alpha - 0.3)  # Slower fade
             else:
                 self.fade_alpha = 255
             
@@ -175,11 +176,12 @@ class Bird:
         self.dy -= 0.2 * math.sin(angle_to_other)
 
     def align_direction(self, bird_index, other_bird_index, other_bird, distance):
-
         # Align direction with the other bird
         angle_of_other_movement = math.atan2(other_bird.dy, other_bird.dx)
-        speed_adjustment = 0.5
-        self.dx = speed_adjustment * math.cos(angle_of_other_movement)  # Adjust speed to match
+        
+        # Dynamic speed adjustment based on distance
+        speed_adjustment = max(0.1, min(1.0, 1.0 - distance / variables.interaction_zone_radius))
+        self.dx = speed_adjustment * math.cos(angle_of_other_movement)
         self.dy = speed_adjustment * math.sin(angle_of_other_movement)
 
         # Shift towards the other bird
@@ -187,8 +189,10 @@ class Bird:
         dy_to_other = variables.Y[other_bird_index] - variables.Y[bird_index]
 
         if distance > 0:  # Avoid division by zero if birds are at the same position
-            self.dx += variables.shift_to_buddy * dx_to_other / distance
-            self.dy += variables.shift_to_buddy * dy_to_other / distance
+            # Dynamic shift adjustment based on distance
+            shift_strength = variables.shift_to_buddy * (1.0 - distance / variables.interaction_zone_radius)
+            self.dx += shift_strength * dx_to_other / distance
+            self.dy += shift_strength * dy_to_other / distance
 
     def update(self, bird_index, all_birds, distances, this_step_interactions):
         # Update energy if this bird has an energy system
@@ -240,10 +244,40 @@ class Bird:
 
     def handle_interactions(self, bird_index, interaction_zone_birds, all_birds):
         for other_bird_index, distance in interaction_zone_birds:
-            self.align_direction(bird_index, other_bird_index, all_birds[other_bird_index], distance)
+            other_bird = all_birds[other_bird_index]
+            # Skip aligning and shifting towards predators
+            if other_bird.can_kill():
+                continue
+            self.align_direction(bird_index, other_bird_index, other_bird, distance)
 
     def update_position(self, bird_index):
         """Update bird position considering inertia, borders, and restricted areas"""
+        # Calculate desired direction
+        desired_dx = self.dx
+        desired_dy = self.dy
+        
+        # Calculate current angle and desired angle
+        current_angle = math.atan2(self.last_dy, self.last_dx)
+        desired_angle = math.atan2(desired_dy, desired_dx)
+        
+        # Calculate angle difference
+        angle_diff = desired_angle - current_angle
+        
+        # Normalize angle difference
+        angle_diff = (angle_diff + math.pi) % (2 * math.pi) - math.pi
+        
+        # Limit turning angle
+        max_turn_angle = math.radians(5)  # Maximum 5 degree turn per update
+        if abs(angle_diff) > max_turn_angle:
+            angle_diff = max_turn_angle if angle_diff > 0 else -max_turn_angle
+        
+        # Calculate new direction based on limited turn
+        new_angle = current_angle + angle_diff
+        
+        # Update direction with limited turn
+        self.dx = math.cos(new_angle) * math.hypot(desired_dx, desired_dy)
+        self.dy = math.sin(new_angle) * math.hypot(desired_dx, desired_dy)
+        
         # Apply inertia
         self.dx = variables.inertia * self.last_dx + (1 - variables.inertia) * self.dx
         self.dy = variables.inertia * self.last_dy + (1 - variables.inertia) * self.dy
@@ -266,7 +300,7 @@ class Bird:
         # Update position
         variables.X[bird_index] += np.round(self.dx)
         variables.Y[bird_index] += np.round(self.dy)
-        
+
     def handle_border_collision(self,bird_index):
         """Handle collision with screen borders"""
         avoidance_radius = variables.collision_zone_radius * 2
