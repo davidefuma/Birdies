@@ -55,6 +55,9 @@ class Game:
         # Initialize particle system
         self.particles = []
 
+        # Load wall texture for restricted areas
+        self.wall_texture = pygame.image.load('static/wall.jpg')
+
         # Initialize background surface for efficient updates
         self.background_surface = pygame.Surface((self.screen_width, self.screen_height))
         self.background_surface.fill(variables.get_current_theme()['background'])
@@ -201,6 +204,22 @@ class Game:
         self.draw_particles()
 
     def draw_static_elements(self):
+        # Draw wall texture for areas outside the main border
+        outside_border_rects = [
+            # Left side outside border
+            (0, 0, variables.BORDER_THICKNESS, self.screen_height),
+            # Right side outside border (accounting for panel)
+            (self.screen_width - variables.panel_width, 0, variables.BORDER_THICKNESS, self.screen_height),
+            # Top outside border
+            (0, 0, self.screen_width, variables.BORDER_THICKNESS),
+            # Bottom outside border
+            (0, self.screen_height - variables.BORDER_THICKNESS, self.screen_width, variables.BORDER_THICKNESS)
+        ]
+
+        for rect_x, rect_y, rect_width, rect_height in outside_border_rects:
+            area_texture = pygame.transform.scale(self.wall_texture, (rect_width, rect_height))
+            self.background_surface.blit(area_texture, (rect_x, rect_y))
+
         # Draw solid borders on the background surface
         pygame.draw.rect(self.background_surface, variables.get_current_theme()['border'],
                          (variables.BORDER_THICKNESS, variables.BORDER_THICKNESS,
@@ -208,11 +227,11 @@ class Game:
                           self.screen_height - 2 * variables.BORDER_THICKNESS),
                          2)  # Border with thickness of 2
 
-        # Draw all restricted areas on the background surface
+        # Draw all restricted areas with texture
         for rect in variables.restricted_areas:
             rect_x, rect_y, rect_width, rect_height = rect
-            pygame.draw.rect(self.background_surface, variables.get_current_theme()['restricted'],
-                             (rect_x, rect_y, rect_width, rect_height))
+            area_texture = pygame.transform.scale(self.wall_texture, (rect_width, rect_height))
+            self.background_surface.blit(area_texture, (rect_x, rect_y))
 
     def update_particles(self):
         # Efficiently update particles
