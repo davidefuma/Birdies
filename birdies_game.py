@@ -8,6 +8,7 @@ from Button import Button
 from predator import Predator
 from prey import Prey
 from PopulationChart import PopulationChart
+import math
 
 # Initialize Pygame
 pygame.init()
@@ -62,6 +63,13 @@ class Game:
         self.background_surface = pygame.Surface((self.screen_width, self.screen_height))
         self.background_surface.fill(variables.get_current_theme()['background'])
         self.draw_static_elements()
+
+        # Spatial partitioning grid setup
+        self.grid_cell_size = 50  # Size of each grid cell
+        self.spatial_grid = {}
+
+        # Define batch size for processing
+        self.batch_size = 10
 
     def create_birds(self):
         num_predators = int(variables.num_birds * variables.predator_ratio)
@@ -164,49 +172,122 @@ class Game:
 
         pygame.quit()
 
+    def update_spatial_grid(self):
+        """Organize birds into a spatial grid for efficient interaction checks"""
+        # Clear previous grid
+        self.spatial_grid.clear()
+        
+        # Assign birds to grid cells
+        for bird_index, bird in enumerate(self.birds):
+            if bird.is_dead:
+                continue
+            
+            # Calculate grid cell coordinates
+            grid_x = int(variables.X[bird_index] // self.grid_cell_size)
+            grid_y = int(variables.Y[bird_index] // self.grid_cell_size)
+            
+            # Add bird to corresponding grid cell
+            grid_key = (grid_x, grid_y)
+            if grid_key not in self.spatial_grid:
+                self.spatial_grid[grid_key] = []
+            self.spatial_grid[grid_key].append(bird_index)
+
+    def get_nearby_birds(self, bird_index):
+        """Retrieve birds in the same or neighboring grid cells"""
+        x = variables.X[bird_index]
+        y = variables.Y[bird_index]
+        
+        # Calculate current grid cell
+        grid_x = int(x // self.grid_cell_size)
+        grid_y = int(y // self.grid_cell_size)
+        
+        # Neighboring grid cells to check
+        nearby_cells = [
+            (grid_x, grid_y),
+            (grid_x-1, grid_y), (grid_x+1, grid_y),
+            (grid_x, grid_y-1), (grid_x, grid_y+1),
+            (grid_x-1, grid_y-1), (grid_x+1, grid_y-1),
+            (grid_x-1, grid_y+1), (grid_x+1, grid_y+1)
+        ]
+        
+        # Collect nearby bird indices
+        nearby_birds = []
+        for cell in nearby_cells:
+            if cell in self.spatial_grid:
+                nearby_birds.extend(self.spatial_grid[cell])
+        
+        return nearby_birds
+
     def update(self):
-        # Calculate distances between all the couples of birds
-        disx = variables.X[:, np.newaxis] - variables.X  # Calculate x-differences for all pairs
-        disy = variables.Y[:, np.newaxis] - variables.Y  # Calculate y-differences for all pairs
-        distances = np.hypot(disx, disy)  # Calculate distances for all pairs
-
-        this_step_interactions = {}
-
-        for bird_index, bird in enumerate(self.birds):  # Iterate using index
-            this_step_interactions[bird_index] = {}
-            bird.update(bird_index, self.birds, distances, this_step_interactions)  # Pass the bird's index
-
+        # Update spatial grid before processing interactions
+        self.update_spatial_grid()
+        
+        # Prepare distance matrix for all birds
+        distances = np.full((len(self.birds), len(self.birds)), np.inf)
+        
+        # Update birds using spatial partitioning and batch processing
+        for start in range(0, len(self.birds), self.batch_size):
+            end = min(start + self.batch_size, len(self.birds))
+            for bird_index in range(start, end):
+                bird = self.birds[bird_index]
+                if bird.is_dead:
+                    continue
+                
+                # Get nearby birds
+                nearby_bird_indices = self.get_nearby_birds(bird_index)
+                
+                # Calculate distances for nearby birds
+                for nearby_idx in nearby_bird_indices:
+                    if nearby_idx != bird_index:
+                        dist = math.hypot(
+                            variables.X[bird_index] - variables.X[nearby_idx], 
+                            variables.Y[bird_index] - variables.Y[nearby_idx]
+                        )
+                        distances[bird_index, nearby_idx] = dist
+                
+                # Process interactions with nearby birds
+                bird.update(bird_index, self.birds, distances, [])
+        
         # Update population statistics
         num_predators = sum(1 for bird in self.birds if isinstance(bird, Predator) and not bird.is_dead)
         num_prey = sum(1 for bird in self.birds if isinstance(bird, Prey) and not bird.is_dead)
         self.population_chart.update(num_predators, num_prey)
-
-        # Update particles
-        self.update_particles()
+        
+        # Update particles in batches
+        for start in range(0, len(self.particles), self.batch_size):
+            end = min(start + self.batch_size, len(self.particles))
+            for particle in self.particles[start:end]:
+                particle.update()
+                if particle.is_dead():
+                    self.particles.remove(particle)
 
     def draw(self):
         # Blit the background surface instead of filling the screen each frame
         variables.screen.blit(self.background_surface, (0, 0))
         
-        for bird_index, bird in enumerate(self.birds):
-            bird.draw(bird_index, variables.screen)
-
-        # Draw UI panel background
+        # Render birds in batches
+        for start in range(0, len(self.birds), self.batch_size):
+            end = min(start + self.batch_size, len(self.birds))
+            for bird_index in range(start, end):
+                bird = self.birds[bird_index]
+                if not bird.is_dead:
+                    bird.draw(bird_index, variables.screen)
+        
+        # Render particles in batches
+        for start in range(0, len(self.particles), self.batch_size):
+            end = min(start + self.batch_size, len(self.particles))
+            for particle in self.particles[start:end]:
+                particle.draw(variables.screen)
+        
+        # Draw UI elements
         pygame.draw.rect(variables.screen, variables.get_current_theme()['panel'],
                         (self.screen_width - variables.panel_width, 0,
                          variables.panel_width, self.screen_height))
-
-        # Draw UI elements
         for slider in self.sliders:
             slider.draw(variables.screen)
         self.show_zones_checkbox.draw(variables.screen)
         self.theme_button.draw(variables.screen)
-
-        # Draw population chart
         self.population_chart.draw(variables.screen)
-
-        # Draw particles
-        self.draw_particles()
 
     def draw_static_elements(self):
         # Draw wall texture for areas outside the main border

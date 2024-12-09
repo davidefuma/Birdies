@@ -27,8 +27,8 @@ restricted_areas = [
 ]
 
 # Simulation Configuration
-num_birds = 50  # Total number of birds in the simulation
-predator_ratio = 0.2  # Proportion of predators in the total bird population
+num_birds = 100  # Total number of birds in the simulation
+predator_ratio = 0.1  # Proportion of predators in the total bird population
 
 # Predator-Prey constants
 PREDATOR_SIZE_RATIO = 2.0  # Predators are twice as big as prey
