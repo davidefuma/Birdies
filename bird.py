@@ -6,6 +6,26 @@ import variables
 
 
 class Bird:
+    """
+    The Bird class represents a generic bird within the simulation, providing
+    basic attributes and methods for movement, rendering, and interaction.
+    It serves as a base class for specific bird types like predators and prey.
+
+    Attributes:
+        is_dead (bool): Indicates whether the bird is dead.
+        dx (float): Horizontal movement component.
+        dy (float): Vertical movement component.
+        last_dx (float): Previous horizontal movement component.
+        last_dy (float): Previous vertical movement component.
+
+    Methods:
+        draw(bird_index, screen): Renders the bird on the screen.
+        get_size(): Returns the size of the bird.
+        get_color(): Returns the color of the bird.
+        can_be_killed(): Indicates if the bird can be killed.
+        can_kill(): Indicates if the bird can kill others.
+        draw_collision_zone(bird_index): Draws the collision zone for the bird.
+    """
     def __init__(self, dx, dy):
         self.is_dead = False
         self.dx = dx

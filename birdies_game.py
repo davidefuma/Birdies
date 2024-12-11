@@ -38,6 +38,24 @@ sliders = [
 
 
 class Game:
+    """
+    The Game class manages the overall simulation environment, including the initialization
+    and management of birds, UI elements, and the main game loop. It handles the rendering
+    of the game world, updates to the simulation state, and user interactions through the UI.
+
+    Attributes:
+        num_birds (int): Total number of birds in the simulation.
+        predator_ratio (float): Ratio of predators to total birds.
+        screen_width (int): Width of the game window.
+        screen_height (int): Height of the game window.
+        birds (list): List of bird objects in the simulation.
+        particles (list): List of particle objects for visual effects.
+        wall_texture (Surface): Texture used for restricted areas.
+        background_surface (Surface): Surface for static background elements.
+        grid_cell_size (int): Size of each cell in the spatial partitioning grid.
+        spatial_grid (dict): Dictionary for spatial partitioning of birds.
+        batch_size (int): Number of birds processed in each batch for rendering.
+    """
     def __init__(self):
         self.num_birds = variables.num_birds
         self.predator_ratio = variables.predator_ratio
@@ -262,22 +280,24 @@ class Game:
                     self.particles.remove(particle)
 
     def draw(self):
-        # Blit the background surface instead of filling the screen each frame
-        variables.screen.blit(self.background_surface, (0, 0))
-        
+        # Load and scale background texture
+        background_texture = pygame.image.load('static/background.jpg')
+        background_texture = pygame.transform.scale(background_texture, (self.screen_width, self.screen_height))
+        variables.screen.blit(background_texture, (0, 0))
+
         # Render birds in batches
         for start in range(0, len(self.birds), self.batch_size):
             end = min(start + self.batch_size, len(self.birds))
             for bird_index in range(start, end):
                 bird = self.birds[bird_index]
                 bird.draw(bird_index, variables.screen)
-        
+
         # Render particles in batches
         for start in range(0, len(self.particles), self.batch_size):
             end = min(start + self.batch_size, len(self.particles))
             for particle in self.particles[start:end]:
                 particle.draw(variables.screen)
-        
+
         # Draw UI elements
         pygame.draw.rect(variables.screen, variables.get_current_theme()['panel'],
                         (self.screen_width - variables.panel_width, 0,
@@ -287,6 +307,19 @@ class Game:
         self.show_zones_checkbox.draw(variables.screen)
         self.theme_button.draw(variables.screen)
         self.population_chart.draw(variables.screen)
+
+        # Draw interaction and collision zones if enabled
+        if variables.show_zones:
+            for bird in self.birds:
+                bird.draw_collision_zone()
+                bird.draw_interaction_zone()
+
+        # Ensure restricted areas are visible using wall texture
+        wall_texture = pygame.image.load('static/wall.jpg')
+        for rect in variables.restricted_areas:
+            rect_x, rect_y, rect_width, rect_height = rect
+            area_texture = pygame.transform.scale(wall_texture, (rect_width, rect_height))
+            variables.screen.blit(area_texture, (rect_x, rect_y))
 
     def draw_static_elements(self):
         # Draw wall texture for areas outside the main border

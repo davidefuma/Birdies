@@ -18,6 +18,23 @@ A dynamic 2D predator-prey simulation game built with Pygame, featuring complex 
 - Dynamic interaction zones for movement and alignment
 - Intelligent border and restricted area avoidance
 
+## Recent Improvements
+
+### Dynamic Flocking Behavior
+- Implemented dynamic adjustment for speed and shift based on distance, enhancing flocking realism.
+
+### Enhanced Dead Bird Visibility
+- Improved the fade effect for dead birds to ensure they remain visible longer.
+
+### Spatial Partitioning
+- Introduced a grid-based system to optimize bird interaction checks.
+
+### Batch Processing
+- Birds and particles are now updated and rendered in batches to improve performance.
+
+### Prey Behavior
+- Prey now avoid aligning or shifting towards predators.
+
 ## Controls
 
 ### Control Panel
